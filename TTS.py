@@ -7,6 +7,26 @@ from dotenv import load_dotenv
 from fastapi import Response
 import json
 import uuid
+from fastapi.middleware.cors import CORSMiddleware
+
+origins = ["*"]
+
+origins = [
+    "http://localhost.tiangolo.com",
+    "https://localhost.tiangolo.com",
+    "http://localhost",
+    "http://localhost:8080",
+]
+
+app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # .env 파일 로드
 load_dotenv()
@@ -19,7 +39,6 @@ AWS_SECRET_KEY = os.getenv("AWS_SECRET_KEY")
 BUCKET_NAME = os.getenv("BUCKET_NAME")
 BUCKET_URL = os.getenv("BUCKET_URL")
 
-app = FastAPI()
 
 class TTS_req(BaseModel):
     sentence: str
@@ -42,13 +61,17 @@ def upload_file_to_s3(filename, object_name):
                           aws_access_key_id=AWS_ACCESS_KEY,
                           aws_secret_access_key=AWS_SECRET_KEY)
     s3.upload_file(filename, BUCKET_NAME, object_name)
-    return f"{BUCKET_URL}/{object_name}"
+    res = BUCKET_URL+"/"+object_name
+    print('res is  ', res)
+    return res
 
 
 
 @app.post("/tts")
 async def tts(request: TTS_req):
     filename = text_to_speech(request.sentence)
-    s3_url = upload_file_to_s3(filename, f"TTS/{filename}")
+    file_path = "TTS/"+filename
+    print('file path is  ',file_path)
+    s3_url = upload_file_to_s3(filename, file_path)
     response_data= {"speaking_audio":s3_url}
     return Response(content=json.dumps(response_data), media_type="application/json")
